@@ -1,0 +1,16 @@
+# build output
+build/
+cmake-build-*/
+out/
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+.cache/
+compile_commands.json
+
+# data files your database writes while testing
+data/
+*.tsdb
+*.wal
