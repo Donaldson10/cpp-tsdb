@@ -26,6 +26,7 @@ endif()
 # Add new .cpp files to this list as you create them.
 add_library(tsdb
   src/version.cpp
+  src/series.cpp
 )
 target_include_directories(tsdb PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(tsdb PRIVATE tsdb_options)

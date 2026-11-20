@@ -9,6 +9,7 @@ FetchContent_MakeAvailable(googletest)
 # Add new test files to this list as you create them.
 add_executable(tsdb_tests
   smoke_test.cpp
+  series_test.cpp
 )
 target_link_libraries(tsdb_tests PRIVATE tsdb tsdb_options GTest::gtest_main)
 
