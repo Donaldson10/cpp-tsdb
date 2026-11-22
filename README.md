@@ -9,15 +9,43 @@ A time-series database written from scratch in C++20.
 
 ## What it does
 
-_TODO: one paragraph. What data goes in, what queries come out, what makes it a time-series database._
+tsdb stores **time-stamped measurements**, such as temperature readings from a sensor every few seconds,
+and answers **time-range queries** ("all readings between 1:00 and 2:00"). Each point is a 64-bit
+millisecond timestamp and a `double` value. Unlike a general-purpose database, it is built around how
+time-series data behaves: writes almost always arrive in time order, and reads ask for contiguous ranges
+of time. Points are kept sorted in memory for fast range lookups, and a write-ahead log persists them to disk
+so data can survive a restart.
 
 ## Features
 
-- [ ] _TODO: list features as they land (e.g. append-only writes, time-range queries, compression)_
+- [x] In-memory series kept sorted by timestamp; out-of-order inserts handled
+- [x] Half-open time-range queries `[start, end)` in O(log n + k) using binary search
+- [x] Duplicate timestamps: last write wins
+- [x] Write-ahead log: fixed 16-byte binary records, flushed on every append, replayable after restart
+- [ ] Wire the WAL into inserts and startup recovery
+- [x] Crash tolerance: a torn final record is ignored on replay
+- [x] Unit tests (GoogleTest), run under AddressSanitizer + UBSan
+- [ ] Per-record checksums and `fsync` durability
+- [ ] Multiple series with names and tags
+- [ ] Gorilla compression (delta-of-delta timestamps, XOR-encoded values)
+- [ ] Aggregations and downsampling
+- [ ] Command-line tool and real sensor data ingest
 
 ## Design
 
-_TODO: 3-5 sentences plus a diagram. Full details in [docs/DESIGN.md](docs/DESIGN.md)._
+Two components so far: an in-memory `Series` (a `std::vector` kept sorted by timestamp) and a
+write-ahead log (`WAL`) on disk. Queries use two binary searches (`std::lower_bound`) to find the range
+boundaries and copy out the points in between. The WAL appends each point as a 16-byte record and can
+replay them after a restart. Next step: connect them so every insert is logged first, then applied in
+memory, and startup replays the log (planned flow below).
+
+```
+insert(t, v) ──► WAL file (append + flush) ──► sorted in-memory Series ◄── query(start, end)
+                       │                               ▲
+                       └──────── replay on startup ────┘
+```
+
+Every decision, with the alternatives considered, is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Benchmarks
 
