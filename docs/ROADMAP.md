@@ -5,14 +5,15 @@ Ship v0.1 before starting the stretch goals: a small, finished, tested database
 is worth more on a resume than a big unfinished one.
 
 ## v0.1 - In-memory core
-- [ ] Decide the data model: what is a "point"? (timestamp, value, series name/tags?)
-- [ ] Insert points into one series, in memory
-- [ ] Query a time range from one series
-- [ ] Unit tests for insert + range query, including edge cases (empty, out-of-order, duplicates)
+- [x] Decide the data model: what is a "point"? (timestamp, value, series name/tags?)
+- [x] Insert points into one series, in memory
+- [x] Query a time range from one series
+- [x] Unit tests for insert + range query, including edge cases (empty, out-of-order, duplicates)
 
 ## v0.2 - Persistence
-- [ ] Write points to disk (pick a simple file format and document it in DESIGN.md)
-- [ ] Read them back after a restart
+- [x] Write points to disk (pick a simple file format and document it in DESIGN.md)
+- [x] Read them back after a restart
+- [ ] WAL: tests for appends across restarts, missing file, torn record, unopenable path
 - [ ] Write-ahead log (WAL) so a crash doesn't lose recent writes
 - [ ] Tests that simulate a crash and recover
 

@@ -41,7 +41,22 @@ Cost: O(log n + k), where k is the number of points returned.
 _Which encodings, and measured results._
 
 ## Durability
-_WAL format, when it's flushed (fsync), how recovery works._
+v0.2: a write-ahead log (WAL). Every insert is appended to a log file; on startup the log is replayed
+to rebuild the in-memory series.
+
+- **Record format:** fixed-size 16-byte binary records, back to back: 8-byte timestamp (`int64_t`)
+  followed by 8-byte value (`double`). Fixed size means no separators are needed: record N starts at
+  byte N * 16. (Variable-size records would need a length prefix; not needed yet.)
+- **File location:** the `Wal` class takes the file path as a constructor parameter. Tests pass their own
+  temp files; the CLI uses a default path when none is given.
+- **When writes reach the file:** every insert is appended and flushed immediately. `flush()` hands the
+  data to the OS, so it survives the *program* crashing. It does not survive power loss or an OS crash;
+  that needs `fsync` (planned, slower).
+- **Missing file:** treated as an empty log (a brand new database), and created on open. Failing to
+  open or create the file (bad folder, no permission) is an error and throws.
+- **Recovery:** read 16-byte records until end of file. The log is append-only, so a crash can only damage
+  the last record. An incomplete final record (fewer than 16 bytes) is a torn write and is ignored.
+  Planned: per-record checksums to detect records that are complete but corrupted.
 
 ## Decision log
 
@@ -53,3 +68,8 @@ _WAL format, when it's flushed (fsync), how recovery works._
 | 2026-11-19 | Duplicate timestamps: last write wins | Keep both; reject with error | One value per timestamp is easy to reason about; matches Prometheus/InfluxDB; tolerates retries |
 | 2026-11-19 | Query with `start >= end` returns empty | Throw `std::invalid_argument` | An empty interval contains no points; consistent with `start == end`; callers never crash on bad input |
 | 2026-11-19 | Store points in a sorted `std::vector` | `std::map`; unsorted vector + sort on query | Contiguous memory is cache-friendly; binary search gives O(log n) lookups; simplest structure for v0.1 |
+| 2026-11-20 | WAL records are fixed 16-byte binary (timestamp + value) | Text/CSV; length-prefixed variable records | Smaller and faster than text; fixed size makes record boundaries implicit; length prefix not needed until records vary |
+| 2026-11-20 | WAL path is a constructor parameter; CLI has a default | Hard-coded fixed path | Tests need isolated temp files and can run in parallel; keeps real data separate from test data |
+| 2026-11-20 | Flush the WAL after every insert | Batch writes; `fsync` every insert | Survives program crashes with little cost; `fsync` (power-loss safety) deferred as a known trade-off |
+| 2026-11-20 | Missing WAL file = empty log, created on open | Treat missing file as an error | A new database has no log yet; append mode creates it. Only failure to open/create is an error |
+| 2026-11-20 | On replay, ignore an incomplete final record | Treat it as fatal corruption | Append-only log means only the tail can be torn by a crash; earlier records are intact |
