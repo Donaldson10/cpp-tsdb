@@ -11,6 +11,7 @@ add_executable(tsdb_tests
   smoke_test.cpp
   series_test.cpp
   wal_test.cpp
+  database_test.cpp
 )
 target_link_libraries(tsdb_tests PRIVATE tsdb tsdb_options GTest::gtest_main)
 

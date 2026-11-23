@@ -22,7 +22,7 @@ so data can survive a restart.
 - [x] Half-open time-range queries `[start, end)` in O(log n + k) using binary search
 - [x] Duplicate timestamps: last write wins
 - [x] Write-ahead log: fixed 16-byte binary records, flushed on every append, replayable after restart
-- [ ] Wire the WAL into inserts and startup recovery
+- [x] `Database` ties them together: every insert is logged first, then applied in memory; startup replays the log
 - [x] Crash tolerance: a torn final record is ignored on replay
 - [x] Unit tests (GoogleTest), run under AddressSanitizer + UBSan
 - [ ] Per-record checksums and `fsync` durability
@@ -35,9 +35,9 @@ so data can survive a restart.
 
 Two components so far: an in-memory `Series` (a `std::vector` kept sorted by timestamp) and a
 write-ahead log (`WAL`) on disk. Queries use two binary searches (`std::lower_bound`) to find the range
-boundaries and copy out the points in between. The WAL appends each point as a 16-byte record and can
-replay them after a restart. Next step: connect them so every insert is logged first, then applied in
-memory, and startup replays the log (planned flow below).
+boundaries and copy out the points in between. The WAL appends each point as a 16-byte record. A `Database` class
+owns both: every insert is logged first, then applied in memory, and on startup the log is replayed to
+rebuild the series.
 
 ```
 insert(t, v) ──► WAL file (append + flush) ──► sorted in-memory Series ◄── query(start, end)

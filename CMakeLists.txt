@@ -28,6 +28,7 @@ add_library(tsdb
   src/version.cpp
   src/series.cpp
   src/wal.cpp
+  src/database.cpp
 )
 target_include_directories(tsdb PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(tsdb PRIVATE tsdb_options)

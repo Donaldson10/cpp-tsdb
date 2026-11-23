@@ -14,8 +14,10 @@ is worth more on a resume than a big unfinished one.
 - [x] Write points to disk (pick a simple file format and document it in DESIGN.md)
 - [x] Read them back after a restart
 - [ ] WAL: tests for appends across restarts, missing file, torn record, unopenable path
-- [ ] Write-ahead log (WAL) so a crash doesn't lose recent writes
-- [ ] Tests that simulate a crash and recover
+- [x] Write-ahead log (WAL) so a crash doesn't lose recent writes (`Database`: log first, then memory; replay on startup)
+- [x] Test: data survives a restart (`DatabaseTest`)
+- [ ] Test: restart twice, WAL file size unchanged (replay must not re-log)
+- [ ] Tests that simulate a crash (torn final record) and recover
 
 ## v0.3 - Compression
 - [ ] Delta-of-delta encoding for timestamps
