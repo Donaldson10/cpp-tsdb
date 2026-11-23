@@ -16,8 +16,9 @@ is worth more on a resume than a big unfinished one.
 - [ ] WAL: tests for appends across restarts, missing file, torn record, unopenable path
 - [x] Write-ahead log (WAL) so a crash doesn't lose recent writes (`Database`: log first, then memory; replay on startup)
 - [x] Test: data survives a restart (`DatabaseTest`)
-- [ ] Test: restart twice, WAL file size unchanged (replay must not re-log)
-- [ ] Tests that simulate a crash (torn final record) and recover
+- [x] Test: restart doesn't grow the WAL (replay must not re-log)
+- [x] Test: torn final record is skipped on recovery
+- [ ] Bug: inserting after a torn record misaligns the log. Fix: truncate the torn tail when opening the WAL
 
 ## v0.3 - Compression
 - [ ] Delta-of-delta encoding for timestamps
