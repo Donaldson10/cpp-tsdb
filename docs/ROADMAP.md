@@ -13,12 +13,12 @@ is worth more on a resume than a big unfinished one.
 ## v0.2 - Persistence
 - [x] Write points to disk (pick a simple file format and document it in DESIGN.md)
 - [x] Read them back after a restart
-- [ ] WAL: tests for appends across restarts, missing file, torn record, unopenable path
 - [x] Write-ahead log (WAL) so a crash doesn't lose recent writes (`Database`: log first, then memory; replay on startup)
 - [x] Test: data survives a restart (`DatabaseTest`)
 - [x] Test: restart doesn't grow the WAL (replay must not re-log)
 - [x] Test: torn final record is skipped on recovery
-- [ ] Bug: inserting after a torn record misaligns the log. Fix: truncate the torn tail when opening the WAL
+- [x] Fix: truncate a torn tail when opening the WAL (test: insert after a crash, then restart)
+- [ ] Follow-up (optional): WAL test for an unopenable path (`EXPECT_THROW`)
 
 ## v0.3 - Compression
 - [ ] Delta-of-delta encoding for timestamps

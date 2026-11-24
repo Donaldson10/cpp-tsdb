@@ -123,6 +123,66 @@ TEST(DatabaseTest, CrashRecoveryTest){
     EXPECT_EQ(answer[2].value,  29.0);
     EXPECT_EQ(answer[3].value,  31.5);
 
-    ASSERT_EQ(std::filesystem::file_size(path), 6u * sizeof(tsdb::Point) + 8);
+    ASSERT_EQ(std::filesystem::file_size(path), 6u * sizeof(tsdb::Point));
+
+}
+
+TEST(DatabaseTest, InsertAfterCrash){
+    // 1. Setup: a clean temp file just for this test
+    auto path = std::filesystem::temp_directory_path() / "insert_after_crash.wal";
+    std::filesystem::remove(path);   // delete leftovers from earlier runs
+
+    
+    {
+        tsdb::Database db(path);
+        db.insert(1000, 25.0);
+        db.insert(1500, 27.5);
+        db.insert(4500, 35.5);
+        db.insert(2000, 29.0);
+        db.insert(4000, 31.5);
+        db.insert(1500, 28.0);
+
+        ASSERT_EQ(db.size(), 5u);
+    }
+
+    {
+        std::ofstream out(path, std::ios::binary | std::ios::app);
+        ASSERT_TRUE(out);
+
+        tsdb::Point p = {3500, 28.0};
+        
+        out.write(reinterpret_cast<const char*>(&p.timestamp), sizeof(p.timestamp));
+        out.flush();
+    }
+    
+    {
+        tsdb::Database db2(path);
+        ASSERT_EQ(db2.size(), 5u);
+        db2.insert(5000, 40.0);
+    }
+
+    tsdb::Database db3(path);
+    ASSERT_EQ(db3.size(), 6u);
+
+    
+
+    std::vector<tsdb::Point> answer = db3.query(1000, 5500);
+    ASSERT_EQ(answer.size(), 6u);
+
+    EXPECT_EQ(answer[0].timestamp, 1000);
+    EXPECT_EQ(answer[1].timestamp, 1500);
+    EXPECT_EQ(answer[2].timestamp, 2000);
+    EXPECT_EQ(answer[3].timestamp, 4000);
+    EXPECT_EQ(answer[4].timestamp, 4500);
+    EXPECT_EQ(answer[5].timestamp, 5000);
+
+    EXPECT_EQ(answer[0].value,  25.0);
+    EXPECT_EQ(answer[1].value,  28.0);
+    EXPECT_EQ(answer[2].value,  29.0);
+    EXPECT_EQ(answer[3].value,  31.5);
+    EXPECT_EQ(answer[4].value,  35.5);
+    EXPECT_EQ(answer[5].value,  40.0);
+
+    ASSERT_EQ(std::filesystem::file_size(path),7u * sizeof(tsdb::Point));
 
 }

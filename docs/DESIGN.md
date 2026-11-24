@@ -55,8 +55,26 @@ to rebuild the in-memory series.
 - **Missing file:** treated as an empty log (a brand new database), and created on open. Failing to
   open or create the file (bad folder, no permission) is an error and throws.
 - **Recovery:** read 16-byte records until end of file. The log is append-only, so a crash can only damage
-  the last record. An incomplete final record (fewer than 16 bytes) is a torn write and is ignored.
-  Planned: per-record checksums to detect records that are complete but corrupted.
+  the last record. When the WAL is opened, if the file size is not a multiple of 16 bytes, the torn
+  tail is **truncated** (`std::filesystem::resize_file`) back to the last complete record, before any
+  new appends. Replay then only ever sees complete records.
+  - *Why truncate instead of just ignoring it:* the first version ignored the torn bytes on replay but
+    left them in the file. The next append then landed after the garbage, shifting every later record
+    by 8 bytes: replay produced a fake point (torn timestamp + the next record's timestamp bytes read as
+    a double) and lost the real one. Found by a test that inserts after a simulated crash.
+  - Planned: per-record checksums to detect records that are complete but corrupted.
+- **Log growth:** the WAL is never truncated (beyond the torn tail), because it is the only copy of the
+  data on disk. Overwritten duplicates stay in the file. Trimming waits until snapshots exist (v0.3).
+- **Byte order:** records use the machine's native byte order (little-endian on x86 and Apple Silicon).
+  Fine for one machine; a portable format would fix the byte order explicitly.
+
+### Database: tying WAL and Series together
+- `Database` owns a `WAL` and a `Series` (composition, not inheritance, so the only way to insert is
+  through `Database::insert`, which always logs).
+- **Insert:** append to the WAL first, then insert into the series ("write-ahead": if the program dies
+  between the two, the point is still on disk and is recovered on restart).
+- **Startup:** the constructor replays the WAL straight into the series, *not* through
+  `Database::insert`, otherwise every restart would re-log every point and double the file.
 
 ## Decision log
 
@@ -72,4 +90,8 @@ to rebuild the in-memory series.
 | 2026-11-20 | WAL path is a constructor parameter; CLI has a default | Hard-coded fixed path | Tests need isolated temp files and can run in parallel; keeps real data separate from test data |
 | 2026-11-20 | Flush the WAL after every insert | Batch writes; `fsync` every insert | Survives program crashes with little cost; `fsync` (power-loss safety) deferred as a known trade-off |
 | 2026-11-20 | Missing WAL file = empty log, created on open | Treat missing file as an error | A new database has no log yet; append mode creates it. Only failure to open/create is an error |
-| 2026-11-20 | On replay, ignore an incomplete final record | Treat it as fatal corruption | Append-only log means only the tail can be torn by a crash; earlier records are intact |
+| 2026-11-20 | On replay, ignore an incomplete final record | Treat it as fatal corruption | Append-only log means only the tail can be torn by a crash; earlier records are intact. *Superseded 2026-11-23, see below* |
+| 2026-11-22 | `Database` composes a `WAL` and a `Series` | Inherit from `Series` | Inheritance would expose `Series::insert`, bypassing the log |
+| 2026-11-22 | Replay goes directly into the series, not through `Database::insert` | Replay via `insert` | Replaying via `insert` re-logs every point and doubles the file on each restart (caught by `RestartsDoNotGrowWal`) |
+| 2026-11-22 | WAL is never trimmed (except torn tail) | Clear the WAL after replay | The WAL is the only on-disk copy; trimming needs snapshots first |
+| 2026-11-23 | Truncate a torn tail when the WAL is opened | Ignore it on replay (previous decision) | Ignoring left garbage in the file; the next append misaligned every later record (fake point, lost data). Caught by `InsertAfterCrash` |

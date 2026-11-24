@@ -2,7 +2,7 @@
 
 A time-series database written from scratch in C++20.
 
-> **Status:** early development. See [docs/ROADMAP.md](docs/ROADMAP.md) for progress.
+> **Status:** v0.2 (persistence + crash recovery) complete; v0.3 (compression) next. See [docs/ROADMAP.md](docs/ROADMAP.md) for progress.
 
 <!-- Fill these sections in as you build. Recruiters read the first screen of a README,
      so keep the top short: what it is, what works, one number that shows it works. -->
@@ -23,7 +23,7 @@ so data can survive a restart.
 - [x] Duplicate timestamps: last write wins
 - [x] Write-ahead log: fixed 16-byte binary records, flushed on every append, replayable after restart
 - [x] `Database` ties them together: every insert is logged first, then applied in memory; startup replays the log
-- [x] Crash tolerance: a torn final record is ignored on replay
+- [x] Crash recovery: a torn final record is truncated when the log is opened, so later writes stay aligned
 - [x] Unit tests (GoogleTest), run under AddressSanitizer + UBSan
 - [ ] Per-record checksums and `fsync` durability
 - [ ] Multiple series with names and tags
